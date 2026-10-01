@@ -1,0 +1,20 @@
+# Segredos e configurações locais
+.env
+.env.*
+!.env.example
+
+# Ambientes virtuais Python
+Venv/
+venv/
+.venv/
+
+# Arquivos temporários do Python
+__pycache__/
+*.py[cod]
+
+# Arquivos locais do Flask
+instance/
+
+# Configurações locais de editor
+.vscode/
+.idea/
