@@ -20,3 +20,8 @@ class Config:
     SESSION_COOKIE_SECURE = (os.environ.get("SESSION_COOKIE_SECURE", "false").lower() == "true")
 
     PERMANENT_SESSION_LIFETIME = timedelta(days = 7)
+
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_pre_ping": True,
+        "pool_recycle" : 280,
+    }

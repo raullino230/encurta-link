@@ -56,6 +56,16 @@ def Sidebar(pagina_ativa: str):
 # =====================================================================
 def DashboardShell(pagina_ativa: str, *conteudo):
     return Div(
+        
+        Button(
+            "☰",
+            id = "btn-menu-mobile",
+            cls = "btn-menu-mobile",
+            type = "button",
+        ),
+
+        Div(id = "overlay-sidebar", cls = "overlay-sidebar"),
+
         Sidebar(pagina_ativa),
         Main(*conteudo, cls="dashboard-main"),
         cls="dashboard-layout"

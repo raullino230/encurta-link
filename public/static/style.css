@@ -353,10 +353,68 @@ ul {
 
 /* ===== Adicionar ao style.css — estilos das páginas internas ===== */
 
+/* ===== Padrão (desktop): escondido ===== */
+.btn-menu-mobile {
+  display: none;
+  background: rgba(57, 211, 83, 0.14);
+  border: 1px solid rgba(57, 211, 83, 0.3);
+  color: #39d353;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 25;
+  cursor: pointer;
+}
+
+.overlay-sidebar {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 15;
+}
+
+.sidebar.aberta {
+  left: 0;
+  background: #0a0d0a;
+}
+
+.overlay-sidebar.aberto {
+  display: block;
+}
+
 .dashboard-layout {
   display: flex;
   min-height: 100vh;
 }
+
+/* ===== Mobile: tudo que muda vai AQUI DENTRO ===== */
+@media (max-width: 640px) {
+  .btn-menu-mobile {
+    display: flex;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: -240px;
+    height: 100vh;
+    z-index: 20;
+    transition: left 0.25s ease;
+    background: rgba(0, 0, 0, 0.35);  
+  }
+
+  .dashboard-main {
+    padding: 1.25rem 1rem;
+  }
+}
+
 
 /* ---------- Sidebar ---------- */
 .sidebar {

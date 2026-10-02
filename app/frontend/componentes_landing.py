@@ -39,7 +39,8 @@ def Layout(conteudo):
             conteudo,
             Script(src="/static/dots.js"),
             Script(src="/static/shorten.js"),
-            Script(src="/static/criar-link.js"),   
+            Script(src="/static/criar-link.js"),
+            Script(src="/static/menu-mobile.js"),  
         ),
     )
 
