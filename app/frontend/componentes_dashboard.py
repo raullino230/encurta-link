@@ -1,4 +1,5 @@
 from fasthtml.common import *
+from app.frontend.constantes import NOME_MARCA, DOMINIO_EXIBICAO
 from flask_wtf.csrf import generate_csrf
 
 
@@ -25,7 +26,7 @@ def Sidebar(pagina_ativa: str):
         return A(Span(icone, cls="menu-icon"), texto, href=rota, cls=classe)
 
     return Aside(
-        Div("🔗 encurta-link", cls="sidebar-logo"),
+        Div(f"🔗 {NOME_MARCA}", cls="sidebar-logo"),
 
         A("+ Criar novo", href="/dashboard", cls="btn-criar-novo"),
 
@@ -56,16 +57,13 @@ def Sidebar(pagina_ativa: str):
 # =====================================================================
 def DashboardShell(pagina_ativa: str, *conteudo):
     return Div(
-        
         Button(
             "☰",
             id = "btn-menu-mobile",
             cls = "btn-menu-mobile",
             type = "button",
         ),
-
         Div(id = "overlay-sidebar", cls = "overlay-sidebar"),
-
         Sidebar(pagina_ativa),
         Main(*conteudo, cls="dashboard-main"),
         cls="dashboard-layout"
@@ -85,7 +83,7 @@ def LinhaLink(link):
 
     return Div(
         Div(
-            Span(f"curta.link/{link['short_code']}", cls="link-code"),
+            Span(f"{DOMINIO_EXIBICAO}/{link['short_code']}", cls="link-code"),
             Span(link["original_url"], cls="link-url"),
             cls="link-info"
         ),
@@ -198,7 +196,7 @@ def AnalyticsPage(cliques_7_dias, links_ativos, media_dia, cliques_por_dia, top_
             Div(
                 *[
                     Div(
-                        Span(f"curta.link/{codigo}", cls="link-code"),
+                        Span(f"{DOMINIO_EXIBICAO}/{codigo}", cls="link-code"),
                         Span(f"{cliques} cliques", cls="link-meta"),
                         cls="ranking-item"
                     )
