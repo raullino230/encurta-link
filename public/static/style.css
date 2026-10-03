@@ -417,6 +417,17 @@ ul {
   .dashboard-main h2 {
     padding-left: 54px;
   }
+
+  .shorten-form input {
+    flex: none;   /* <- impede o flex-basis:0 de colapsar a altura no layout em coluna */
+    height: 54px;
+    font-size: 1rem;
+    padding: 0 16px;
+  }
+
+  .shorten-form button {
+    height: 54px;
+  }
 }
 
 
