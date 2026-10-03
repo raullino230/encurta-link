@@ -413,6 +413,10 @@ ul {
   .dashboard-main {
     padding: 1.25rem 1rem;
   }
+
+  .dashboard-main h2 {
+    padding-left: 54px;
+  }
 }
 
 
