@@ -13,6 +13,8 @@ class Config:
     GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
     GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
     REDIS_URL = os.environ.get("REDIS_URL")
+    CLICK_RETENTION_DAYS = int(os.getenv("CLICK_RETENTION_DAYS", 365))
+    CRON_SECRET = os.getenv("CRON_SECRET")
 
     MAX_CONTENT_LENGTH = 7 * 1024
     LIMITE_TAMANHO_URL = 2000

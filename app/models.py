@@ -15,7 +15,7 @@ class Link(db.Model):
 class Click(db.Model):
     id = db.Column(db.Integer, primary_key = True)
     link_id = db.Column(db.Integer, db.ForeignKey("link.id"))
-    clicked_at = db.Column(db.DateTime(timezone = True), default = utcnow)
+    clicked_at = db.Column(db.DateTime(timezone = True), default = utcnow, index = True)
     ip_address = db.Column(db.String(50))
     user_agent = db.Column(db.String(255))
 
@@ -25,3 +25,13 @@ class User(db.Model):
     name = db.Column(db.Text)
     email = db.Column(db.Text, unique = True)
     created_at = db.Column(db.DateTime(timezone = True), default = utcnow)
+
+class ClickResumo(db.Model):
+    id = db.Column(db.Integer, primary_key = True)
+    link_id = db.Column(db.Integer ,db.ForeignKey("link.id"), nullable = False)
+    data =  db.Column(db.Date, nullable = False)
+    total_cliques = db.Column(db.Integer, nullable = False, default = 0)
+
+    __table_args__ = (
+        db.UniqueConstraint("link_id", "data", name="uq_click_resumo_link_data"),
+    )

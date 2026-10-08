@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/manutencao/retencao", "schedule": "0 3 * * *" }
+  ]
+}
