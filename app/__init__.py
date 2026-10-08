@@ -51,4 +51,7 @@ def create_app(config_teste=None):
     from app.frontend.routes_fronend import frontend_bp
     app.register_blueprint(frontend_bp)
 
+    from app.routes.manutencao import manutencao_bp
+    app.register_blueprint(manutencao_bp)
+
     return app

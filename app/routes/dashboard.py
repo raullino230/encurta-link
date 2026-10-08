@@ -5,6 +5,7 @@ from fasthtml.common import to_xml
 from app.models import db, Link, Click, User
 from app.frontend.componentes_landing import Layout
 from app.frontend.componentes_dashboard import MeusLinksPage, AnalyticsPage, ConfiguracoesPage
+from app.services.retencao import total_cliques_por_link
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
@@ -25,10 +26,13 @@ def ver_dashboard():
         .all()
     )
 
+    totais = total_cliques_por_link([link.id for link, _ in resultados])
+
     links_formatados = []
     total_cliques_geral = 0
 
-    for link, total_cliques in resultados:
+    for link, _ in resultados:        
+        total_cliques = totais.get(link.id, 0)
         links_formatados.append({
             "short_code": link.short_code,
             "original_url": link.original_url,
@@ -91,15 +95,18 @@ def ver_analytics():
         cliques_por_dia.append((DIAS_SEMANA[dia.weekday()], altura))
 
     # top 5 links mais clicados
-    top_links = (
-        db.session.query(Link.short_code, func.count(Click.id).label("total"))
-        .outerjoin(Click)
+    links_usuario = (
+        db.session.query(Link.id, Link.short_code)
         .filter(Link.user_id == session["user_id"])
-        .group_by(Link.id)
-        .order_by(func.count(Click.id).desc())
-        .limit(5)
         .all()
     )
+    totais = total_cliques_por_link([l.id for l in links_usuario])
+
+    top_links = sorted(
+        [(l.short_code, totais.get(l.id, 0)) for l in links_usuario],
+        key=lambda x: x[1],
+        reverse=True,
+    )[:5]
 
     pagina = AnalyticsPage(
         cliques_7_dias=cliques_7_dias,
