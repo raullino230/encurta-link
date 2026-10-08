@@ -38,9 +38,30 @@
         return;
       }
 
-      if (!resposta.ok) {
-        resultado.textContent = "Não foi possível criar o link. Confira a URL.";
-        resultado.classList.add("erro");
+      function mostrarErro(mensagem) {
+        let caixa = document.getElementById("msg-erro");
+        if (!caixa) {
+          caixa = document.createElement("p");
+          caixa.id = "msg-erro";
+          caixa.className = "msg-erro";
+          document.querySelector(".card-criar-link").appendChild(caixa);
+        }
+        caixa.textContent = mensagem;
+      }
+
+      // Dentro do fetch, depois de receber a resposta:
+      if (response.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+
+      if (!response.ok) {
+        let mensagem = "Algo deu errado. Tente novamente.";
+        try {
+          const dados = await response.json();
+          if (dados.erro) mensagem = dados.erro;
+        } catch (e) {}
+        mostrarErro(mensagem);
         return;
       }
 

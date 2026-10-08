@@ -54,4 +54,7 @@ def create_app(config_teste=None):
     from app.routes.manutencao import manutencao_bp
     app.register_blueprint(manutencao_bp)
 
+    from app.erros import registrar_erros
+    registrar_erros(app)
+
     return app
