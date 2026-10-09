@@ -906,3 +906,18 @@ ul {
     text-align: center;
   }
 }
+
+/* ===== Fix mobile: sidebar cortada e "Configurações" escondido ===== */
+@media (max-width: 640px) {
+  .sidebar {
+    height: 100vh;   /* fallback para navegadores antigos */
+    height: 100dvh;  /* altura realmente visível (descontando a barra do navegador) */
+    overflow-y: auto;
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .sidebar .sidebar-rodape {
+    margin-top: clamp(2rem, 25vh, 12rem);  /* fallback */
+    margin-top: clamp(2rem, 25dvh, 12rem);
+  }
+}
