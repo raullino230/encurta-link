@@ -25,6 +25,19 @@ class User(db.Model):
     name = db.Column(db.Text)
     email = db.Column(db.Text, unique = True)
     created_at = db.Column(db.DateTime(timezone = True), default = utcnow)
+    plano = db.Column(db.String(20), nullable = False, default = "gratuito", server_default = "gratuito")
+    data_renovacao = db.Column(db.DateTime(timezone=True), nullable=True)
+
+    @property
+    def is_pro(self):
+        if self.plano != "pro" or self.data_renovacao is None:
+            return False
+
+        renovacao = self.data_renovacao
+        if renovacao.tzinfo is None:
+            renovacao = renovacao.replace(tzinfo=timezone.utc)
+
+        return renovacao > utcnow()
 
 class ClickResumo(db.Model):
     id = db.Column(db.Integer, primary_key = True)

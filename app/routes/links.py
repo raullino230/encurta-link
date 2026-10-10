@@ -1,13 +1,12 @@
 from flask import Blueprint, request, current_app, session, abort
-from app.models import db, Link
+from app.models import db, Link, User
+from app.planos import limite_links
 from app.utils import EncurtadorBase62
 from app import limiter
 from sqlalchemy import func
 from urllib.parse import urlparse
 
 links_bp = Blueprint("links", __name__)
-
-limite_plano_gratis = 10
 
 
 @links_bp.route("/links", methods=["POST", "GET"])
@@ -22,13 +21,19 @@ def create_link():
     if request.method == "GET":
         return "Essa é a pagina da criação de urls curtas"
 
+    user = db.session.get(User, session["user_id"])
+
+    if user is None:
+        session.clear()
+        abort(401)
+
     links_pertencem_usuario = (
         db.session.query(func.count(Link.id))
-        .filter(Link.user_id == session["user_id"])
+        .filter(Link.user_id == user.id)
         .scalar()
     )
 
-    if links_pertencem_usuario >= limite_plano_gratis:
+    if links_pertencem_usuario >= limite_links(user):
         abort(403, description="Você atingiu o limite de links do seu plano.")
 
     dados = request.get_json(silent=True)
@@ -48,7 +53,7 @@ def create_link():
         abort(400, description="Envie uma URL válida, começando com http ou https.")
 
     encurtador = EncurtadorBase62()
-    link_model = Link(original_url=url, user_id=session["user_id"])
+    link_model = Link(original_url=url, user_id=user.id)
 
     while True:
         codigo = encurtador.gerar_codigo_aleatorio(6)
