@@ -57,4 +57,7 @@ def create_app(config_teste=None):
     from app.erros import registrar_erros
     registrar_erros(app)
 
+    from app.cli import registrar_comandos
+    registrar_comandos(app)
+
     return app

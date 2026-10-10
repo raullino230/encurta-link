@@ -6,10 +6,11 @@ from app.models import db, Link, Click, User
 from app.frontend.componentes_landing import Layout
 from app.frontend.componentes_dashboard import MeusLinksPage, AnalyticsPage, ConfiguracoesPage
 from app.services.retencao import total_cliques_por_link
+from app.planos import limite_links, regras_do_plano
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
-LIMITE_PLANO_GRATIS = 10  # mesmo valor de links.py — vale centralizar isso em config.py depois
+
 DIAS_SEMANA = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
 
 
@@ -125,15 +126,21 @@ def ver_configuracoes():
 
     user = db.session.get(User, session["user_id"])
 
+    if user is None:
+        session.clear()
+        return redirect("/login")
+
     links_usados = (
         db.session.query(func.count(Link.id))
-        .filter(Link.user_id == session["user_id"])
+        .filter(Link.user_id == user.id)
         .scalar()
     ) or 0
 
     pagina = ConfiguracoesPage(
         usuario={"name": user.name, "email": user.email},
         links_usados=links_usados,
-        limite_plano=LIMITE_PLANO_GRATIS,  # sem plano Pro real ainda, fica fixo por enquanto
+        limite_plano=limite_links(user),
+        plano_nome=regras_do_plano(user)["nome"],
+        is_pro=user.is_pro,
     )
     return to_xml(Layout(pagina))

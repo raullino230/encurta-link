@@ -2,6 +2,7 @@ from flask import Response
 
 from app import db, oauth
 from app.models import Click, Link
+from app.planos import PLANOS
 
 
 def autenticar(client, user_id):
@@ -57,10 +58,10 @@ def test_requisicao_maior_que_limite_retorna_413(client, user_teste):
     assert resposta.status_code == 413
 
 
-def test_decimo_primeiro_link_retorna_403(client, app, user_teste):
+def test_link_alem_do_limite_do_plano_gratuito_retorna_403(client, app, user_teste):
     autenticar(client, user_teste)
 
-    for numero in range(10):
+    for numero in range(PLANOS["gratuito"]["limite_links"]):
         criar_link(app, user_teste, f"link{numero}")
 
     resposta = client.post(

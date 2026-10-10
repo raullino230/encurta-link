@@ -214,9 +214,12 @@ def AnalyticsPage(cliques_7_dias, links_ativos, media_dia, cliques_por_dia, top_
 # `usuario`: dict com name, email
 # `links_usados` / `limite_plano`: números pra barra de progresso
 # =====================================================================
-def ConfiguracoesPage(usuario, links_usados, limite_plano, plano_nome="Grátis"):
+def ConfiguracoesPage(usuario, links_usados, limite_plano, plano_nome="Gratuito", is_pro=False):
     iniciais = "".join([parte[0] for parte in usuario["name"].split()[:2]]).upper()
     percentual_uso = min(100, int((links_usados / limite_plano) * 100))
+
+    # Pro não vê o botão de upgrade
+    botao_upgrade = [] if is_pro else [Button("Fazer upgrade", cls="btn-upgrade")]
 
     return DashboardShell(
         "configuracoes",
@@ -244,12 +247,12 @@ def ConfiguracoesPage(usuario, links_usados, limite_plano, plano_nome="Grátis")
                 Div(cls="barra-progresso-preenchida", style=f"width: {percentual_uso}%;"),
                 cls="barra-progresso"
             ),
-            Button("Fazer upgrade", cls="btn-upgrade"),
+            *botao_upgrade,
             cls="card-plano"
         ),
 
         Form(
-            Input(type = "hidden", name = "csrf_token", value = generate_csrf()),
+            Input(type="hidden", name="csrf_token", value=generate_csrf()),
             Button("Sair da conta", type="submit", cls="btn-sair"),
             action="/logout",
             method="post",
