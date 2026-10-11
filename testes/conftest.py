@@ -2,6 +2,7 @@ import pytest
 
 from app import create_app, db
 from app.models import User
+from cryptography.fernet import Fernet
 
 
 @pytest.fixture()
@@ -15,6 +16,9 @@ def app():
         "GOOGLE_CLIENT_SECRET": "segredo-de-teste",
         "WTF_CSRF_ENABLED": False,
         "RATELIMIT_STORAGE_URI": "memory://",
+        "HASH_SEGREDO": "segredo-apenas-para-testes",
+        "IP_CRIPTO_CHAVE": Fernet.generate_key().decode(),
+        "IP_RETENCAO_DIAS": 190,
     })
 
     with app.app_context():

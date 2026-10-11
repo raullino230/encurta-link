@@ -59,3 +59,5 @@ websockets==17.1
 Werkzeug==3.1.8
 wrapt==2.4.1
 WTForms==3.2.2
+user-agents==2.2.0
+ua-parser==1.0.2
