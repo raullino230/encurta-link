@@ -16,8 +16,16 @@ class Click(db.Model):
     id = db.Column(db.Integer, primary_key = True)
     link_id = db.Column(db.Integer, db.ForeignKey("link.id"))
     clicked_at = db.Column(db.DateTime(timezone = True), default = utcnow, index = True)
-    ip_address = db.Column(db.String(50))
+    ip_address = db.Column(db.String(255)) # legado, removido na migration 2
     user_agent = db.Column(db.String(255))
+    visitante_hash = db.Column(db.String(32), nullable = True)
+    pais = db.Column(db.String(2), nullable = True)
+    cidade = db.Column(db.String(100), nullable = True)
+    dispositivo = db.Column(db.String(20), nullable = True)
+    navegador = db.Column(db.String(50), nullable = True)
+    origem = db.Column(db.String(255), nullable = True)
+
+    __table_args__ = (db.Index("ix_click_link_data", "link_id", "clicked_at"),)
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key = True)
@@ -48,3 +56,9 @@ class ClickResumo(db.Model):
     __table_args__ = (
         db.UniqueConstraint("link_id", "data", name="uq_click_resumo_link_data"),
     )
+
+class RegistroAcesso(db.Model):
+    id = db.Column(db.Integer, primary_key = True)
+    link_id = db.Column(db.Integer ,db.ForeignKey("link.id"), nullable = False)
+    acessado_em = db.Column(db.DateTime(timezone = True), default = utcnow, index = True)
+    ip_cifrado = db.Column(db.String(255))

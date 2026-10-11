@@ -1,5 +1,8 @@
-from flask import Blueprint, redirect, request, abort
-from app.models import Link, db, Click
+from flask import Blueprint, abort, current_app, redirect, request
+
+from app.models import Click, Link, RegistroAcesso, db
+from app.services.coleta import extrair_dados_clique
+from app.services.protecao_ip import cifrar_ip
 
 redirect_bp = Blueprint("redirect", __name__)
 
@@ -15,13 +18,28 @@ def go_to_original(short_code):
     if link_model is None:
         abort(404)
 
-    clique = Click(
-        link_id=link_model.id,
-        ip_address=request.remote_addr,
-        user_agent=request.user_agent.string,
-    )
+    # Guardados antes de qualquer commit/rollback, que "expiram" o objeto
+    destino = link_model.original_url
+    link_id = link_model.id
 
-    db.session.add(clique)
-    db.session.commit()
+    try:
+        dados, ip = extrair_dados_clique(request)
 
-    return redirect(link_model.original_url)
+        db.session.add(
+            Click(
+                link_id=link_id,
+                user_agent=(request.user_agent.string or "")[:255],
+                **dados,
+            )
+        )
+
+        ip_cifrado = cifrar_ip(ip)
+        if ip_cifrado:
+            db.session.add(RegistroAcesso(link_id=link_id, ip_cifrado=ip_cifrado))
+
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Falha ao registrar clique")
+
+    return redirect(destino)
