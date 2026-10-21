@@ -1,6 +1,7 @@
 from fasthtml.common import *
 from app.frontend.constantes import NOME_MARCA, DOMINIO_EXIBICAO
 from flask_wtf.csrf import generate_csrf
+from urllib.parse import quote
 
 
 # =====================================================================
@@ -144,10 +145,22 @@ def MeusLinksPage(links: list, total_links: int, total_cliques: int):
 
 
 # =====================================================================
-# ANALYTICS — resumo + gráfico de barras + top links.
-# `cliques_por_dia`: lista de tuplas (dia_abreviado, valor_percentual_altura)
-# `top_links`: lista de tuplas (short_code, total_cliques)
+# ANALYTICS — resumo, gráficos, rankings e seletores.
+# Gratuito: básico (7 dias) + blocos avançados bloqueados, só com texto fixo.
+# Pro: períodos, filtro por link, visitantes únicos, rankings e horários.
 # =====================================================================
+PERIODOS_EXIBIDOS = (7, 30, 90, 365)
+
+# Ordem e títulos dos rankings (as chaves são as colunas de COLUNAS_RANKING)
+TITULOS_RANKING = {
+    "pais": "Países",
+    "cidade": "Cidades",
+    "dispositivo": "Dispositivos",
+    "navegador": "Navegadores",
+    "origem": "Origem dos cliques",
+}
+
+
 def CardResumo(label, valor):
     return Div(
         Div(label, cls="card-label"),
@@ -166,46 +179,179 @@ def BarraGrafico(dia, altura_percentual, destaque=False):
     )
 
 
-def AnalyticsPage(cliques_7_dias, links_ativos, media_dia, cliques_por_dia, top_links):
+def SeletorPeriodo(periodo_atual, liberados, link_atual):
+    botoes = []
+    for dias in PERIODOS_EXIBIDOS:
+        rotulo = f"{dias} dias"
+        if dias in liberados:
+            url = f"/dashboard/analytics?periodo={dias}"
+            if link_atual:
+                url += f"&link={quote(link_atual)}"
+            classe = "periodo-opcao ativo" if dias == periodo_atual else "periodo-opcao"
+            botoes.append(A(rotulo, href=url, cls=classe))
+        else:
+            # não liberado: cadeado e caminho para o upgrade
+            botoes.append(
+                A(f"🔒 {rotulo}", href="/dashboard/configuracoes", cls="periodo-opcao travado")
+            )
+    return Div(*botoes, cls="seletor-periodo")
+
+
+def SeletorLink(links, link_atual):
+    opcoes = [Option("Todos os links", value="", selected=(link_atual is None))]
+    for codigo in links:
+        opcoes.append(Option(codigo, value=codigo, selected=(codigo == link_atual)))
+    # O JavaScript de static/analytics.js recarrega a página ao escolher
+    return Select(*opcoes, id="seletor-link", cls="seletor-link")
+
+
+def GraficoSerie(serie):
+    maior = max((total for _, total in serie), default=0)
+    # Com 30 ou mais pontos, mostra o rótulo de 1 a cada 5
+    passo = 5 if len(serie) >= 30 else 1
+    ultimo = len(serie) - 1
+
+    barras = []
+    for posicao, (rotulo, total) in enumerate(serie):
+        altura = int(total / maior * 100) if maior else 0
+        texto = rotulo if posicao % passo == 0 else ""
+        barras.append(BarraGrafico(texto, altura, destaque=(posicao == ultimo)))
+
+    classe = "grafico-barras compacto" if len(serie) >= 30 else "grafico-barras"
+    return Div(*barras, cls=classe)
+
+
+def GraficoHoras(horas):
+    maior = max(horas, default=0)
+
+    barras = []
+    for hora, total in enumerate(horas):
+        altura = int(total / maior * 100) if maior else 0
+        rotulo = f"{hora}h" if hora in (0, 6, 12, 18) else ""
+        barras.append(BarraGrafico(rotulo, altura))
+
+    return Div(
+        H3("Horários"),
+        Div(*barras, cls="grafico-barras grafico-horas compacto"),
+        cls="card-grafico"
+    )
+
+
+def LinhaRanking(rotulo, total, percentual):
+    return Div(
+        Div(
+            Span(rotulo, cls="link-code"),
+            Span(str(total), cls="link-meta"),
+            cls="ranking-item"
+        ),
+        Div(
+            Div(cls="ranking-barra", style=f"width: {percentual}%;"),
+            cls="ranking-trilho"
+        ),
+        cls="ranking-linha"
+    )
+
+
+def BlocoRanking(titulo, linhas):
+    if linhas:
+        corpo = [LinhaRanking(rotulo, total, perc) for rotulo, total, perc in linhas]
+    else:
+        corpo = [P("Sem dados no período.", cls="estado-vazio")]
+    return Div(H3(titulo), *corpo, cls="card-ranking bloco-ranking")
+
+
+def BlocoBloqueado(titulo):
+    # Linhas de exemplo escritas à mão. NUNCA use dados reais do usuário aqui.
+    exemplos = [("Exemplo A", 120, 60), ("Exemplo B", 50, 25), ("Exemplo C", 30, 15)]
+    return Div(
+        H3(titulo),
+        Div(
+            *[LinhaRanking(rotulo, total, perc) for rotulo, total, perc in exemplos],
+            cls="exemplo-borrado"
+        ),
+        Div(
+            P("Disponível no Pro"),
+            A("Fazer upgrade", href="/dashboard/configuracoes", cls="btn-upgrade"),
+            cls="bloqueado-aviso"
+        ),
+        cls="card-ranking bloco-bloqueado"
+    )
+
+
+def AnalyticsPage(periodo, periodos_liberados, resumo, serie, top_links, is_pro,
+                  link_atual=None, links_do_usuario=None, horas=None, rankings=None):
+    # 1. Cabeçalho: título + seletor de período (e de link, só no Pro)
+    seletores = [SeletorPeriodo(periodo, periodos_liberados, link_atual)]
+    if is_pro:
+        seletores.append(SeletorLink(links_do_usuario or [], link_atual))
+
+    cabecalho = Div(
+        H2("Analytics"),
+        Div(*seletores, cls="seletores"),
+        cls="analytics-cabecalho"
+    )
+
+    # 2. Cartões de resumo (Pro ganha "visitantes únicos")
+    cartoes = [
+        CardResumo(f"cliques ({periodo} dias)", resumo["total_cliques"]),
+        CardResumo("links ativos", resumo["links_ativos"]),
+        CardResumo("média/dia", resumo["media_dia"]),
+    ]
+    if is_pro:
+        cartoes.append(CardResumo("visitantes únicos", resumo["visitantes_unicos"]))
+    classe_resumo = "grid-resumo com-quatro" if is_pro else "grid-resumo"
+
+    # 3. Gráfico de cliques: o título muda com o período
+    unidade = {90: "semana", 365: "mês"}.get(periodo, "dia")
+    grafico = Div(
+        H3(f"Cliques por {unidade}"),
+        GraficoSerie(serie),
+        cls="card-grafico"
+    )
+
+    # 4. Links mais clicados
+    if top_links:
+        itens_top = [
+            Div(
+                Span(f"{DOMINIO_EXIBICAO}/{codigo}", cls="link-code"),
+                Span(f"{cliques} cliques", cls="link-meta"),
+                cls="ranking-item"
+            )
+            for codigo, cliques in top_links
+        ]
+    else:
+        itens_top = [P("Sem dados no período.", cls="estado-vazio")]
+
+    bloco_top = Div(
+        H3("Links mais clicados"),
+        Div(*itens_top, cls="ranking-lista"),
+        cls="card-ranking"
+    )
+
+    # 5 e 6. Pro: dados reais. Gratuito: só blocos bloqueados com texto fixo.
+    if is_pro:
+        bloco_horas = GraficoHoras(horas)
+        blocos_ranking = [
+            BlocoRanking(titulo, (rankings or {}).get(coluna, []))
+            for coluna, titulo in TITULOS_RANKING.items()
+        ]
+        extras = [Script(src="/static/analytics.js")]
+    else:
+        bloco_horas = BlocoBloqueado("Horários")
+        blocos_ranking = [BlocoBloqueado(titulo) for titulo in TITULOS_RANKING.values()]
+        extras = []
+
     return DashboardShell(
         "analytics",
 
-        H2("Analytics"),
-
-        Div(
-            CardResumo("cliques (7 dias)", cliques_7_dias),
-            CardResumo("links ativos", links_ativos),
-            CardResumo("média/dia", media_dia),
-            cls="grid-resumo"
-        ),
-
-        Div(
-            H3("Cliques por dia"),
-            Div(
-                *[
-                    BarraGrafico(dia, altura, destaque=(i == len(cliques_por_dia) - 1))
-                    for i, (dia, altura) in enumerate(cliques_por_dia)
-                ],
-                cls="grafico-barras"
-            ),
-            cls="card-grafico"
-        ),
-
-        Div(
-            H3("Links mais clicados"),
-            Div(
-                *[
-                    Div(
-                        Span(f"{DOMINIO_EXIBICAO}/{codigo}", cls="link-code"),
-                        Span(f"{cliques} cliques", cls="link-meta"),
-                        cls="ranking-item"
-                    )
-                    for codigo, cliques in top_links
-                ],
-                cls="ranking-lista"
-            ),
-            cls="card-ranking"
-        )
+        cabecalho,
+        Div(*cartoes, cls=classe_resumo),
+        grafico,
+        bloco_top,
+        bloco_horas,
+        # 7. Grade de 2 colunas no desktop e 1 no celular (ver CSS)
+        Div(*blocos_ranking, cls="grid-rankings"),
+        *extras
     )
 
 

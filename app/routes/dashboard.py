@@ -1,17 +1,16 @@
 from datetime import datetime, timedelta, timezone
-from flask import Blueprint, session, redirect
+from flask import Blueprint, session, redirect, request, abort
 from sqlalchemy import func
 from fasthtml.common import to_xml
 from app.models import db, Link, Click, User
 from app.frontend.componentes_landing import Layout
 from app.frontend.componentes_dashboard import MeusLinksPage, AnalyticsPage, ConfiguracoesPage
 from app.services.retencao import total_cliques_por_link
-from app.planos import limite_links, regras_do_plano
+from app.planos import limite_links, regras_do_plano, obter_plano
+from app.services.analytics import *
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
-
-DIAS_SEMANA = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
 
 
 @dashboard_bp.route("/dashboard")
@@ -57,64 +56,68 @@ def ver_analytics():
     if "user_id" not in session:
         return redirect("/login")
 
-    agora = datetime.now(timezone.utc)
-    sete_dias_atras = agora - timedelta(days=7)
+    user = db.session.get(User, session["user_id"])
+    if user is None:
+        session.clear()
+        return redirect("/login")
 
-    links_do_usuario = db.session.query(Link.id).filter(Link.user_id == session["user_id"])
+    valor = request.args.get("periodo")
 
-    cliques_7_dias = (
-        db.session.query(func.count(Click.id))
-        .filter(Click.link_id.in_(links_do_usuario))
-        .filter(Click.clicked_at >= sete_dias_atras)
-        .scalar()
-    ) or 0
+    dias = normalizar_periodo(valor, user)
+    user_pro = user.is_pro
+    link_id = None
+    link_atual = None
+    if user_pro:
+        codigo = request.args.get("link")
+        if codigo:
+            link = (
+                db.session.query(Link)
+                .filter(Link.user_id == user.id)
+                .filter(Link.short_code == codigo)
+                .first()
+            )
+            if link is None:
+                abort(404)
+            link_id = link.id
+            link_atual = link.short_code
 
-    links_ativos = (
-        db.session.query(func.count(Link.id))
-        .filter(Link.user_id == session["user_id"], Link.is_active == True)
-        .scalar()
-    ) or 0
+    dados_resumo = resumo(user.id, dias, link_id)
+    por_dia = serie_cliques(user.id, dias, link_id)
+    mais_clicados = links_mais_clicados(user.id, dias, link_id)
+    periodos_liberados = periodos_disponiveis(user)
 
-    media_dia = round(cliques_7_dias / 7, 1)
+    horas = None
+    rankings = {}
 
-    # agrupa cliques por dia (últimos 7 dias)
-    resultado_datas = (
-        db.session.query(func.date(Click.clicked_at), func.count(Click.id))
-        .filter(Click.link_id.in_(links_do_usuario))
-        .filter(Click.clicked_at >= sete_dias_atras)
-        .group_by(func.date(Click.clicked_at))
-        .all()
-    )
-    cliques_por_data = {data: total for data, total in resultado_datas}
-    maior_valor = max(cliques_por_data.values()) if cliques_por_data else 1
+    seletor_de_link = []
 
-    cliques_por_dia = []
-    for i in range(6, -1, -1):
-        dia = (agora - timedelta(days=i)).date()
-        total = cliques_por_data.get(dia, 0)
-        altura = int((total / maior_valor) * 100) if maior_valor else 0
-        cliques_por_dia.append((DIAS_SEMANA[dia.weekday()], altura))
+    if user_pro:
+        horas = cliques_por_hora(user.id, dias, link_id)
 
-    # top 5 links mais clicados
-    links_usuario = (
-        db.session.query(Link.id, Link.short_code)
-        .filter(Link.user_id == session["user_id"])
-        .all()
-    )
-    totais = total_cliques_por_link([l.id for l in links_usuario])
+        for categoria in COLUNAS_RANKING:
+            rankings[categoria] = ranking(categoria, user.id, dias, link_id)
 
-    top_links = sorted(
-        [(l.short_code, totais.get(l.id, 0)) for l in links_usuario],
-        key=lambda x: x[1],
-        reverse=True,
-    )[:5]
+        linhas = (
+            db.session.query(Link.short_code)
+            .filter(Link.user_id == user.id)
+            .order_by(Link.short_code)
+            .all()
+        )
+
+        for (codigo_do_link,) in linhas:
+            seletor_de_link.append(codigo_do_link)
 
     pagina = AnalyticsPage(
-        cliques_7_dias=cliques_7_dias,
-        links_ativos=links_ativos,
-        media_dia=media_dia,
-        cliques_por_dia=cliques_por_dia,
-        top_links=list(top_links),
+        periodo = dias,
+        periodos_liberados = periodos_liberados,
+        resumo = dados_resumo,
+        serie = por_dia,
+        top_links = mais_clicados,
+        is_pro = user_pro,
+        link_atual = link_atual,
+        links_do_usuario = seletor_de_link,
+        horas = horas,
+        rankings = rankings,
     )
     return to_xml(Layout(pagina))
 
