@@ -1,9 +1,7 @@
-from datetime import timedelta
-
 from cryptography.fernet import Fernet
 
 from app import db
-from app.models import Click, Link, RegistroAcesso, utcnow
+from app.models import Click, Link, RegistroAcesso
 from app.services.protecao_ip import (
     cifrar_ip,
     decifrar_ip,
@@ -124,9 +122,8 @@ def test_clique_cria_registro_de_acesso_com_ip_cifrado(client, app, user_teste):
 
         clique = Click.query.one()
         assert clique.visitante_hash == hash_visitante(IP)
-        # Depois da migration 2 (que remove a coluna), troque por:
-        # assert not hasattr(Click, "ip_address")
-        assert clique.ip_address is None
+
+        assert not hasattr(Click, "ip_address")
 
 
 def test_sem_chave_nao_grava_ip_e_o_redirect_continua(client, app, user_teste):
@@ -141,36 +138,7 @@ def test_sem_chave_nao_grava_ip_e_o_redirect_continua(client, app, user_teste):
         assert Click.query.count() == 1
 
 
-# ---------- comando proteger-ips ----------
-
-def test_proteger_ips_move_os_antigos_e_e_idempotente(app, user_teste):
-    link_id = criar_link(app, user_teste, "ip0003")
-    antigo = utcnow() - timedelta(days=5)
-
-    with app.app_context():
-        db.session.add(
-            Click(link_id=link_id, clicked_at=antigo, ip_address=IP, user_agent="pytest")
-        )
-        db.session.commit()
-
-    runner = app.test_cli_runner()
-
-    primeiro = runner.invoke(args=["proteger-ips"])
-    assert primeiro.exit_code == 0
-
-    with app.app_context():
-        clique = Click.query.one()
-        assert clique.ip_address is None
-        assert clique.visitante_hash == hash_visitante(IP)
-
-        registro = RegistroAcesso.query.one()
-        assert decifrar_ip(registro.ip_cifrado) == IP
-
-    segundo = runner.invoke(args=["proteger-ips"])
-    assert segundo.exit_code == 0
-
-    with app.app_context():
-        assert RegistroAcesso.query.count() == 1
+# ---------- comando proteger-ips ---------
 
 
 def test_proteger_ips_falha_sem_chave(app, user_teste):

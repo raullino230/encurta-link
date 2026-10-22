@@ -16,7 +16,6 @@ class Click(db.Model):
     id = db.Column(db.Integer, primary_key = True)
     link_id = db.Column(db.Integer, db.ForeignKey("link.id"))
     clicked_at = db.Column(db.DateTime(timezone = True), default = utcnow, index = True)
-    ip_address = db.Column(db.String(255)) # legado, removido na migration 2
     user_agent = db.Column(db.String(255))
     visitante_hash = db.Column(db.String(32), nullable = True)
     pais = db.Column(db.String(2), nullable = True)
